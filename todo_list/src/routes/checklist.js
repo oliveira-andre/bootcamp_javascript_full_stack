@@ -4,49 +4,70 @@ const Checklist = require('../models/checklist');
 
 router.get('/', async (req, res) => {
   try {
-    let checklist = await Checklist.find();
-    res.status(200).json(checklist);
+    let checklists = await Checklist.find();
+    res.status(200).render('checklists/index', { checklists: checklists })
   } catch (e) {
-    res.status(500).json(e);
+    res.status(500).render('pages/error', { error: 'Erro ao exibir as listas' });
+  }
+});
+
+router.get('/new', async (req, res) => {
+  try {
+    let checklist = new Checklist();
+    res.status(200).render('checklists/new', { checklist: checklist });
+  } catch (e) {
+    res.status(500).render('pages/error', { error: 'Erro ao iniciar uma nova lista' });
   }
 });
 
 router.post('/', async (req, res) => {
-  let { name } = req.body;
+  let { name } = req.body.checklist;
+  let checklist = new Checklist({ name });
   try {
-    let checklist = await Checklist.create({ name });
-    res.status(201).json(checklist);
+    await checklist.save();
+    res.redirect('/checklists');
   } catch (e) {
-    res.status(422).json(e);
+    let errors = e.errors
+    res.status(422).render('checklists/new', { checklist: { ...checklist, errors } });
+  }
+});
+
+router.get('/:id/edit', async (req, res) => {
+  try {
+    let checklist = await Checklist.findById(req.params.id);
+    res.status(200).render('checklists/edit', { checklist: checklist })
+  } catch (e) {
+    res.status(422).render('pages/error', { error: 'Erro ao exibir a lista de tarefas' });
   }
 });
 
 router.get('/:id', async (req, res) => {
   try {
-    let checklist = await Checklist.findById(req.params.id);
-    res.status(200).json(checklist);
+    let checklist = await Checklist.findById(req.params.id).populate('tasks');
+    res.status(200).render('checklists/show', { checklist: checklist })
   } catch (e) {
-    res.status(422).json(e);
+    res.status(500).render('pages/error', { error: 'Erro ao exibir a lista de tarefas' });
   }
 });
 
 router.put('/:id', async (req, res) => {
-  let { name } = req.body;
-
+  let { name } = req.body.checklist;
+  let checklist = await Checklist.findById(req.params.id);
   try {
-    let checklist = await Checklist.findByIdAndUpdate(req.params.id, { name }, { new: true });
-    res.status(200).json(checklist);
+    await checklist.update({ name });
+    res.redirect('/checklists');
   } catch (e) {
-    res.status(422).json(e);
+    let errors = e.errors
+    res.status(422).render('checklists/edit', { checklist: { ...checklist, errors } });
   }
 });
 
 router.delete('/:id', async (req, res) => {
   try {
-    let checklist = await Checklist.findByIdAndRemove(req.params.id);
-    res.status(200).json({ message: 'Removed with success' });
+    await Checklist.findByIdAndRemove(req.params.id);
+    res.redirect('/checklists');
   } catch (e) {
-    res.status(422).json(e);
+    res.status(500).render('pages/error', { error: 'Erro ao deletar a lista de tarefas' });
   }
 });
 
